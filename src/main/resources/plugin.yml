@@ -1,0 +1,34 @@
+name: SandAC
+version: '1.0'
+main: sand.anticheat.SandAC
+api-version: '1.16'
+authors: [ angelgodbroken ]
+
+commands:
+  sandac:
+    description: SandAC main command
+    usage: /sandac
+    aliases: [sac, smd]
+  ban:
+    description: Ban player
+    usage: /ban <player> <time|навсегда> <reason>
+  unban:
+    description: Unban player
+    usage: /unban <player>
+  mute:
+    description: Mute player
+    usage: /mute <player> <time|навсегда> <reason>
+  unmute:
+    description: /unmute <player>
+
+permissions:
+  sandac.command:
+    default: op
+  sandac.alerts:
+    default: op
+  sandac.admin:
+    default: op
+  sandac.moderation:
+    default: op
+  sandac.bypass:
+    default: op
