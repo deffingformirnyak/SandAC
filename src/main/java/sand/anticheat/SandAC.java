@@ -30,6 +30,8 @@ public final class SandAC extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        saveDefaultConfig();
+
         if (!getDataFolder().exists()) {
             getDataFolder().mkdirs();
         }

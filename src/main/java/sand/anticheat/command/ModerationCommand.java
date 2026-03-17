@@ -27,12 +27,14 @@ public final class ModerationCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("sandac.moderation")) {
+        String name = command.getName().toLowerCase();
+        String perm = this.plugin.getConfig().getString("permissions." + name, "sandac.moderation");
+
+        if (!sender.hasPermission(perm)) {
             sender.sendMessage(prefix() + ChatColor.RED + "Недостаточно прав.");
             return true;
         }
 
-        String name = command.getName().toLowerCase();
         if (name.equals("ban")) {
             return handleBan(sender, args);
         }

@@ -27,7 +27,22 @@ public final class SandCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
+            if (!sender.hasPermission(this.plugin.getConfig().getString("permissions.reload", "sandac.reload"))) {
+                this.plugin.getAlertManager().sendLine(sender, ChatColor.RED + "No permission.");
+                return true;
+            }
+
+            this.plugin.reloadConfig();
+            this.plugin.getAlertManager().sendLine(sender, ChatColor.GREEN + "Configuration reloaded.");
+            return true;
+        }
+
         if (args.length > 0 && args[0].equalsIgnoreCase("alerts")) {
+            if (!sender.hasPermission(this.plugin.getConfig().getString("permissions.alerts", "sandac.alerts"))) {
+                this.plugin.getAlertManager().sendLine(sender, ChatColor.RED + "No permission.");
+                return true;
+            }
             if (!(sender instanceof Player)) {
                 this.plugin.getAlertManager().sendLine(sender, ChatColor.RED + "Only players can toggle alerts.");
                 return true;
@@ -38,7 +53,7 @@ public final class SandCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (!sender.hasPermission("sandac.command")) {
+        if (!sender.hasPermission(this.plugin.getConfig().getString("permissions.command", "sandac.command"))) {
             this.plugin.getAlertManager().sendLine(sender, ChatColor.RED + "No permission.");
             return true;
         }
@@ -86,7 +101,7 @@ public final class SandCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args[0].equalsIgnoreCase("reset")) {
-            if (!sender.hasPermission("sandac.admin")) {
+            if (!sender.hasPermission(this.plugin.getConfig().getString("permissions.admin", "sandac.admin"))) {
                 this.plugin.getAlertManager().sendLine(sender, ChatColor.RED + "No permission.");
                 return true;
             }
@@ -112,6 +127,7 @@ public final class SandCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(CommandSender sender) {
         this.plugin.getAlertManager().sendLine(sender, ChatColor.YELLOW + "/smd alerts" + ChatColor.GRAY + " - toggle live alerts");
+        this.plugin.getAlertManager().sendLine(sender, ChatColor.YELLOW + "/sandac reload" + ChatColor.GRAY + " - reload config");
         this.plugin.getAlertManager().sendLine(sender, ChatColor.YELLOW + "/sandac checks" + ChatColor.GRAY + " - list loaded checks");
         this.plugin.getAlertManager().sendLine(sender, ChatColor.YELLOW + "/sandac info <player>" + ChatColor.GRAY + " - inspect violations");
         this.plugin.getAlertManager().sendLine(sender, ChatColor.YELLOW + "/sandac reset <player>" + ChatColor.GRAY + " - clear violations");
@@ -126,6 +142,7 @@ public final class SandCommand implements CommandExecutor, TabCompleter {
             base.add("help");
             base.add("info");
             base.add("reset");
+            base.add("reload");
             return filter(base, args[0]);
         }
 

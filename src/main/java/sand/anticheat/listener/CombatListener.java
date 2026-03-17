@@ -257,32 +257,50 @@ public final class CombatListener implements Listener {
             return;
         }
 
-        double gcd = computeGCD(rotationDeltas);
-        double expectedGCD = 0.00390625D;
+        float sensitivity = attacker.getInventory().getItemInMainHand().getType().name().contains("SWORD")
+                || attacker.getInventory().getItemInMainHand().getType().name().contains("AXE") ? 1.0F : 0.5F;
+
+        double expectedGCD = 0.00390625D * sensitivity;
 
         int invalidGcdCount = 0;
+        int validLargeRotations = 0;
+        int totalSignificantRotations = 0;
+
         for (Float delta : rotationDeltas) {
-            if (Math.abs(delta) > 0.01F) {
+            if (Math.abs(delta) > 0.5F) {
+                totalSignificantRotations++;
                 double remainder = Math.abs(delta) % expectedGCD;
                 double normalizedRemainder = Math.min(remainder, expectedGCD - remainder);
-                if (normalizedRemainder > expectedGCD * 0.15D && normalizedRemainder < expectedGCD * 0.85D) {
+
+                if (normalizedRemainder > expectedGCD * 0.20D && normalizedRemainder < expectedGCD * 0.80D) {
                     invalidGcdCount++;
+                } else if (Math.abs(delta) > 5.0F) {
+                    validLargeRotations++;
                 }
             }
         }
 
-        boolean gcdBypass = invalidGcdCount >= 5 || gcd < expectedGCD * 0.50D;
+        if (totalSignificantRotations < 5) {
+            data.decayViolation("Combat.KillAura/GCD", 0.12D);
+            return;
+        }
+
+        double invalidRatio = (double) invalidGcdCount / totalSignificantRotations;
+        double validLargeRatio = (double) validLargeRotations / totalSignificantRotations;
+
+        boolean legitimatePattern = validLargeRatio > 0.30D || totalSignificantRotations < 6;
+        boolean gcdBypass = !legitimatePattern && invalidRatio > 0.65D && invalidGcdCount >= 6;
 
         if (!gcdBypass) {
             data.decayViolation("Combat.KillAura/GCD", 0.12D);
             return;
         }
 
-        double vl = data.addViolation("Combat.KillAura/GCD", 0.95D + (invalidGcdCount * 0.15D));
-        if (vl >= 3.50D) {
+        double vl = data.addViolation("Combat.KillAura/GCD", 0.85D + (invalidGcdCount * 0.12D));
+        if (vl >= 4.20D) {
             event.setCancelled(true);
             this.plugin.getAlertManager().sendViolation(attacker, "Combat.KillAura/GCD", vl,
-                    "gcd=" + CheckUtil.format(gcd) + ", invalid=" + invalidGcdCount, true);
+                    "ratio=" + CheckUtil.format(invalidRatio) + ", invalid=" + invalidGcdCount + "/" + totalSignificantRotations, true);
         }
         this.plugin.getPunishmentManager().considerPunishment(attacker, "Combat.KillAura/GCD", vl);
     }

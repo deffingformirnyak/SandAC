@@ -49,6 +49,7 @@ public final class PlayerData {
     private long lastInventoryInteractionMillis;
     private long lastFireworkBoostMillis;
     private long lastFallDamageMillis;
+    private long glideStartMillis;
 
     private int airTicks;
     private int groundTicks;
@@ -128,7 +129,9 @@ public final class PlayerData {
     }
 
     public void markAttack(Entity target) {
-        this.lastAttackMillis = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
+        this.lastAttackMillis = now;
+
         UUID targetId = target.getUniqueId();
         if (targetId.equals(this.lastTargetId)) {
             this.sameTargetHits++;
@@ -136,12 +139,29 @@ public final class PlayerData {
             this.lastTargetId = targetId;
             this.sameTargetHits = 1;
             this.aimSamples.clear();
+            this.yawDeltaSamples.clear();
+            this.pitchDeltaSamples.clear();
+            this.rotationDeltas.clear();
+            this.attackTimings.clear();
         }
-        attackTimings.addLast(System.currentTimeMillis());
+
+        attackTimings.addLast(now);
         if (attackTimings.size() > 10) {
             attackTimings.removeFirst();
         }
-        addRotationDelta(Math.abs(deltaYaw) + Math.abs(deltaPitch));
+
+        float totalRotation = Math.abs(deltaYaw) + Math.abs(deltaPitch);
+        if (totalRotation > 0.5F) {
+            addRotationDelta(totalRotation);
+        }
+    }
+
+    public long getGlideStartMillis() {
+        return this.glideStartMillis;
+    }
+
+    public void setGlideStartMillis(long millis) {
+        this.glideStartMillis = millis;
     }
 
     public void addAimSample(double aimError) {
@@ -180,9 +200,11 @@ public final class PlayerData {
     }
 
     public void addRotationDelta(float delta) {
-        rotationDeltas.addLast(delta);
-        if (rotationDeltas.size() > 12) {
-            rotationDeltas.removeFirst();
+        if (Math.abs(delta) > 0.01F) {
+            rotationDeltas.addLast(delta);
+            if (rotationDeltas.size() > 10) {
+                rotationDeltas.removeFirst();
+            }
         }
     }
 

@@ -56,6 +56,12 @@ public final class MovementListener implements Listener {
             return;
         }
 
+        if (player.isGliding() && data.getGlideStartMillis() == 0L) {
+            data.setGlideStartMillis(System.currentTimeMillis());
+        } else if (!player.isGliding() && data.getGlideStartMillis() != 0L) {
+            data.setGlideStartMillis(0L);
+        }
+
         if (CheckUtil.shouldUpdateSafeLocation(player, data, event.getTo())) {
             data.markSafe(event.getTo());
         }
@@ -103,10 +109,10 @@ public final class MovementListener implements Listener {
             return;
         }
 
-        runElytraFlight(player, data, event);
-        if (event.isCancelled()) {
-            return;
-        }
+//        runElytraFlight(player, data, event);
+//        if (event.isCancelled()) {
+//            return;
+//        }
 
         runWaterLeave(player, data, event);
         if (event.isCancelled()) {
@@ -521,34 +527,65 @@ public final class MovementListener implements Listener {
         this.plugin.getPunishmentManager().considerPunishment(player, "Movement.AirJump", vl);
     }
 
-    private void runElytraFlight(Player player, PlayerData data, PlayerMoveEvent event) {
-        if (!player.isGliding()) {
-            data.decayViolation("Movement.ElytraFlight", 0.16D);
-            return;
-        }
-
-        long sinceFirework = System.currentTimeMillis() - data.getLastFireworkBoostMillis();
-        double horizontal = data.getHorizontalPerTick();
-        double allowed = sinceFirework < 1500L ? 2.80D : 1.15D;
-        boolean suspicious = horizontal > allowed || (sinceFirework >= 1500L && data.getDeltaY() > 0.15D);
-
-        if (!suspicious) {
-            data.decayViolation("Movement.ElytraFlight", 0.14D);
-            return;
-        }
-
-        double vl = data.addViolation("Movement.ElytraFlight",
-                0.85D + Math.max(0.0D, (horizontal - allowed) * 2.8D) + (data.getDeltaY() > 0.15D ? 0.35D : 0.0D));
-        if (vl < 3.50D) {
-            this.plugin.getPunishmentManager().considerPunishment(player, "Movement.ElytraFlight", vl);
-            return;
-        }
-
-        setback(event, data);
-        this.plugin.getAlertManager().sendViolation(player, "Movement.ElytraFlight", vl,
-                "move=" + CheckUtil.format(horizontal) + ", rocket=" + (sinceFirework < 1500L), true);
-        this.plugin.getPunishmentManager().considerPunishment(player, "Movement.ElytraFlight", vl);
-    }
+//    private void runElytraFlight(Player player, PlayerData data, PlayerMoveEvent event) {
+//        if (!player.isGliding()) {
+//            data.decayViolation("Movement.ElytraFlight", 0.16D);
+//            return;
+//        }
+//
+//        long now = System.currentTimeMillis();
+//        long sinceFirework = now - data.getLastFireworkBoostMillis();
+//        long sinceGlideStart = now - data.getGlideStartMillis();
+//
+//        if (sinceGlideStart < 0L || sinceGlideStart > 300000L) {
+//            data.setGlideStartMillis(now);
+//            sinceGlideStart = 0L;
+//        }
+//
+//        double horizontal = data.getHorizontalPerTick();
+//        double deltaY = data.getDeltaY();
+//
+//        double baseAllowed = sinceFirework < 1500L ? 2.80D : 1.15D;
+//        double yAllowed = sinceFirework < 1500L ? 0.50D : 0.15D;
+//
+//        if (sinceGlideStart < 2000L) {
+//            baseAllowed += 0.40D;
+//            yAllowed += 0.25D;
+//        }
+//
+//        if (player.getVelocity().length() > 0.50D) {
+//            baseAllowed += 0.25D;
+//        }
+//
+//        if (player.getLocation().getBlock().getType().name().contains("WATER")) {
+//            data.decayViolation("Movement.ElytraFlight", 0.16D);
+//            return;
+//        }
+//
+//        boolean horizontalSuspicious = horizontal > baseAllowed;
+//        boolean verticalSuspicious = sinceFirework >= 1500L && deltaY > yAllowed && data.getAirTicks() > 10;
+//
+//        if (!horizontalSuspicious && !verticalSuspicious) {
+//            data.decayViolation("Movement.ElytraFlight", 0.14D);
+//            return;
+//        }
+//
+//        double excessH = Math.max(0.0D, horizontal - baseAllowed);
+//        double excessY = Math.max(0.0D, deltaY - yAllowed);
+//
+//        double vl = data.addViolation("Movement.ElytraFlight",
+//                0.65D + (excessH * 2.0D) + (excessY * 1.5D));
+//
+//        if (vl < 4.50D) {
+//            this.plugin.getPunishmentManager().considerPunishment(player, "Movement.ElytraFlight", vl);
+//            return;
+//        }
+//
+//        setback(event, data);
+//        this.plugin.getAlertManager().sendViolation(player, "Movement.ElytraFlight", vl,
+//                "move=" + CheckUtil.format(horizontal) + ", y=" + CheckUtil.format(deltaY) + ", rocket=" + (sinceFirework < 1500L), true);
+//        this.plugin.getPunishmentManager().considerPunishment(player, "Movement.ElytraFlight", vl);
+//    }
 
     private void runWaterLeave(Player player, PlayerData data, PlayerMoveEvent event) {
         long now = System.currentTimeMillis();

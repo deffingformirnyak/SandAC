@@ -25,6 +25,8 @@ tasks {
         javaLauncher = javaToolchains.launcherFor {
             languageVersion = JavaLanguageVersion.of(16)
         }
+
+        runDirectory = file("run")
     }
 }
 
@@ -48,4 +50,19 @@ processResources {
     filesMatching('plugin.yml') {
         expand props
     }
+}
+
+jar {
+    archiveBaseName = 'SandAC'
+    archiveVersion = version
+
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+build {
+    dependsOn jar
 }
