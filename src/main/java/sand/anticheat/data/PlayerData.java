@@ -1,7 +1,13 @@
 package sand.anticheat.data;
 
-import java.util.*;
-
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.UUID;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -15,12 +21,12 @@ public final class PlayerData {
     private final Deque<Double> aimSamples = new ArrayDeque<Double>();
     private final Deque<Double> yawDeltaSamples = new ArrayDeque<Double>();
     private final Deque<Double> pitchDeltaSamples = new ArrayDeque<Double>();
-
-    private final Deque<Float> rotationDeltas = new LinkedList<>();
-    private final Deque<Long> attackTimings = new LinkedList<>();
-
-    private final Map<String, Integer> customCounters = new HashMap<>();
-    private final Map<String, Long> customLongs = new HashMap<>();
+    private final Deque<Double> yawAccelSamples = new ArrayDeque<Double>();
+    private final Deque<Double> pitchAccelSamples = new ArrayDeque<Double>();
+    private final Deque<Float> rotationDeltas = new LinkedList<Float>();
+    private final Deque<Long> attackTimings = new LinkedList<Long>();
+    private final Map<String, Integer> customCounters = new HashMap<String, Integer>();
+    private final Map<String, Long> customLongs = new HashMap<String, Long>();
 
     private Location lastLocation;
     private Location lastSafeLocation;
@@ -89,8 +95,10 @@ public final class PlayerData {
         this.deltaYaw = CheckUtil.wrapDegrees(to.getYaw() - from.getYaw());
         this.deltaPitch = to.getPitch() - from.getPitch();
 
-        pushSample(this.yawDeltaSamples, Math.abs(this.deltaYaw), 12);
-        pushSample(this.pitchDeltaSamples, Math.abs(this.deltaPitch), 12);
+        pushSample(this.yawDeltaSamples, (double) this.deltaYaw, 12);
+        pushSample(this.pitchDeltaSamples, (double) this.deltaPitch, 12);
+        pushSample(this.yawAccelSamples, Math.abs(this.deltaYaw - this.lastDeltaYaw), 12);
+        pushSample(this.pitchAccelSamples, Math.abs(this.deltaPitch - this.lastDeltaPitch), 12);
 
         if (this.lastMoveMillis > 0L) {
             this.moveIntervalMillis = Math.max(1L, now - this.lastMoveMillis);
@@ -141,18 +149,20 @@ public final class PlayerData {
             this.aimSamples.clear();
             this.yawDeltaSamples.clear();
             this.pitchDeltaSamples.clear();
+            this.yawAccelSamples.clear();
+            this.pitchAccelSamples.clear();
             this.rotationDeltas.clear();
             this.attackTimings.clear();
         }
 
-        attackTimings.addLast(now);
-        if (attackTimings.size() > 10) {
-            attackTimings.removeFirst();
+        this.attackTimings.addLast(now);
+        if (this.attackTimings.size() > 10) {
+            this.attackTimings.removeFirst();
         }
 
-        float totalRotation = Math.abs(deltaYaw) + Math.abs(deltaPitch);
-        if (totalRotation > 0.5F) {
-            addRotationDelta(totalRotation);
+        float totalRotation = Math.abs(this.deltaYaw) + Math.abs(this.deltaPitch);
+        if (totalRotation > 0.15F) {
+            this.addRotationDelta(totalRotation);
         }
     }
 
@@ -180,6 +190,14 @@ public final class PlayerData {
         return this.pitchDeltaSamples;
     }
 
+    public Deque<Double> getYawAccelSamples() {
+        return this.yawAccelSamples;
+    }
+
+    public Deque<Double> getPitchAccelSamples() {
+        return this.pitchAccelSamples;
+    }
+
     public void markVelocity(Vector vector) {
         this.lastVelocityMillis = System.currentTimeMillis();
         this.appliedVelocity = vector.clone();
@@ -192,18 +210,18 @@ public final class PlayerData {
     }
 
     public Deque<Float> getRotationDeltas() {
-        return rotationDeltas;
+        return this.rotationDeltas;
     }
 
     public Deque<Long> getAttackTimings() {
-        return attackTimings;
+        return this.attackTimings;
     }
 
     public void addRotationDelta(float delta) {
-        if (Math.abs(delta) > 0.01F) {
-            rotationDeltas.addLast(delta);
-            if (rotationDeltas.size() > 10) {
-                rotationDeltas.removeFirst();
+        if (Math.abs(delta) > 0.001F) {
+            this.rotationDeltas.addLast(delta);
+            if (this.rotationDeltas.size() > 12) {
+                this.rotationDeltas.removeFirst();
             }
         }
     }
@@ -258,19 +276,19 @@ public final class PlayerData {
     }
 
     public Integer getCustomCounter(String key) {
-        return customCounters.get(key);
+        return this.customCounters.get(key);
     }
 
     public void setCustomCounter(String key, int value) {
-        customCounters.put(key, value);
+        this.customCounters.put(key, value);
     }
 
     public long getCustomLong(String key) {
-        return customLongs.getOrDefault(key, 0L);
+        return this.customLongs.containsKey(key) ? this.customLongs.get(key).longValue() : 0L;
     }
 
     public void setCustomLong(String key, long value) {
-        customLongs.put(key, value);
+        this.customLongs.put(key, value);
     }
 
     public void resetViolations() {
@@ -278,6 +296,10 @@ public final class PlayerData {
         this.aimSamples.clear();
         this.yawDeltaSamples.clear();
         this.pitchDeltaSamples.clear();
+        this.yawAccelSamples.clear();
+        this.pitchAccelSamples.clear();
+        this.rotationDeltas.clear();
+        this.attackTimings.clear();
         this.sameTargetHits = 0;
         this.lastTargetId = null;
         this.lastPearlInventoryMillis = 0L;
@@ -288,7 +310,7 @@ public final class PlayerData {
         this.lastFallDamageMillis = 0L;
         this.trackedFallDistance = 0.0D;
         this.lastAirFallDistance = 0.0D;
-        finishVelocityCheck();
+        this.finishVelocityCheck();
     }
 
     public UUID getUniqueId() {
